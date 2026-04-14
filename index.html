@@ -1,109 +1,107 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
+    <title>Rwanda Eastern Province Drought Map</title>
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Global Flood Archive (1985-Present)</title>
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
-        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        #map { height: 100vh; width: 100%; background: #262626; } /* Darker background for the dots to pop */
-        
-        /* Style for the Legend */
-        .info.legend {
-            background: rgba(255, 255, 255, 0.9);
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 0 15px rgba(0,0,0,0.2);
-            line-height: 1.5;
-            font-size: 12px;
-            color: #333;
-        }
-        .legend i {
-            width: 12px;
-            height: 12px;
-            float: left;
-            margin-right: 8px;
-            margin-top: 3px;
-            border-radius: 50%;
-        }
+        #map { height: 600px; width: 100%; }
+        .info { padding: 6px 8px; font: 14px/16px Arial, Helvetica, sans-serif; background: white; background: rgba(255,255,255,0.8); box-shadow: 0 0 15px rgba(0,0,0,0.2); border-radius: 5px; }
+        .info h4 { margin: 0 0 5px; color: #777; }
+        .legend { line-height: 18px; color: #555; }
+        .legend i { width: 18px; height: 18px; float: left; margin-right: 8px; opacity: 0.7; }
     </style>
 </head>
 <body>
 
-    <div id="map"></div>
+<div id="map"></div>
 
-    <!-- Leaflet JavaScript -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    var map = L.map('map').setView([-1.9, 30.5], 9);
 
-    <script>
-        // Initialize the map (Global view)
-        const map = L.map('map').setView([15, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
 
-        // Dark-mode Map Tiles (CartoDB Dark Matter looks best for dots)
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap &copy; CARTO'
-        }).addTo(map);
+    // Coordinates for District Centers in Eastern Province
+    var districtCoords = {
+        'Nyagatare': [-1.30, 30.33],
+        'Gatsibo': [-1.60, 30.45],
+        'Kayonza': [-1.85, 30.65],
+        'Rwamagana': [-1.95, 30.43],
+        'Ngoma': [-2.15, 30.48],
+        'Kirehe': [-2.27, 30.65],
+        'Bugesera': [-2.15, 30.10]
+    };
 
-        // Function to determine color by severity
-        function getColor(severity) {
-            return severity >= 2   ? '#ff0000' : // Severe (Red)
-                   severity >= 1.5 ? '#ff7400' : // Moderate (Orange)
-                                     '#ffc107';   // Minor (Yellow)
-        }
+    function getColor(d) {
+        return d > 100 ? '#006837' : // Very Wet
+               d > 80  ? '#78c679' : // Normal
+               d > 60  ? '#fed976' : // Mild Drought
+               d > 40  ? '#fd8d3c' : // Moderate Drought
+               d > 20  ? '#f03b20' : // Severe Drought
+                         '#bd0026';   // Extreme Drought
+    }
 
-        // Load the GeoJSON file
-        fetch('flood_data.json')
-            .then(response => response.json())
-            .then(data => {
-                L.geoJSON(data, {
-                    // This tells Leaflet to draw dots (CircleMarkers) instead of polygons
-                    pointToLayer: function (feature, latlng) {
-                        const sev = feature.properties.SEVERITY || 1;
-                        return L.circleMarker(latlng, {
-                            radius: 6,
-                            fillColor: getColor(sev),
-                            color: "#fff",
-                            weight: 1,
-                            opacity: 1,
-                            fillOpacity: 0.8
-                        });
-                    },
-                    onEachFeature: function (feature, layer) {
-                        const p = feature.properties;
-                        const startDate = p.BEGAN ? p.BEGAN.split('T')[0] : 'Unknown';
-                        
-                        layer.bindPopup(`
-                            <div style="font-size: 13px;">
-                                <b style="font-size: 15px; color: ${getColor(p.SEVERITY)};">${p.COUNTRY || 'Flood'}</b><br>
-                                <b>📅 Date:</b> ${startDate}<br>
-                                <b>⚠️ Severity:</b> ${p.SEVERITY}<br>
-                                <b>💀 Dead:</b> ${p.DEAD || 0}<br>
-                                <b>📏 Area:</b> ${Math.round(p.AREA || 0).toLocaleString()} km²
-                            </div>
-                        `);
-                    }
-                }).addTo(map);
+    Papa.parse("eastern_province_drought.csv", {
+        download: true,
+        header: true,
+        complete: function(results) {
+            var data = results.data;
+            
+            // For a beginner map, let's show the LATEST anomaly (rfq) for each district
+            var latestData = {};
+            data.forEach(function(row) {
+                if (row.district_name && row.rfq) {
+                    latestData[row.district_name] = row; // Overwrites until the last entry (usually latest date)
+                }
             });
 
-        // Add the Legend to the bottom right
-        const legend = L.control({position: 'bottomright'});
-        legend.onAdd = function (map) {
-            const div = L.DomUtil.create('div', 'info legend');
-            const grades = [1, 1.5, 2];
-            const labels = ['Minor', 'Moderate', 'Severe'];
+            Object.keys(latestData).forEach(function(name) {
+                var d = latestData[name];
+                var coords = districtCoords[name];
+                if (coords) {
+                    var rfq = parseFloat(d.rfq);
+                    var circle = L.circleMarker(coords, {
+                        color: '#000',
+                        weight: 1,
+                        opacity: 1,
+                        fillColor: getColor(rfq),
+                        fillOpacity: 0.8,
+                        radius: 15
+                    }).addTo(map);
 
-            div.innerHTML = '<strong>Flood Severity</strong><br>';
-            for (let i = 0; i < grades.length; i++) {
-                div.innerHTML +=
-                    '<i style="background:' + getColor(grades[i]) + '"></i> ' +
-                    labels[i] + '<br>';
-            }
-            return div;
-        };
-        legend.addTo(map);
+                    circle.bindPopup("<b>District:</b> " + name + 
+                                   "<br><b>Latest Date:</b> " + d.date + 
+                                   "<br><b>Rainfall % of Normal:</b> " + rfq.toFixed(1) + "%" +
+                                   "<br><b>Severity:</b> " + (rfq < 50 ? "Severe Drought" : rfq < 80 ? "Moderate Drought" : "Normal/Wet"));
+                }
+            });
+        }
+    });
 
-    </script>
+    // Legend
+    var legend = L.control({position: 'bottomright'});
+    legend.onAdd = function (map) {
+        var div = L.DomUtil.create('div', 'info legend'),
+            grades = [0, 20, 40, 60, 80, 100],
+            labels = ["Extreme", "Severe", "Moderate", "Mild", "Normal", "Wet"];
+
+        div.innerHTML += '<h4>Rainfall % of Normal</h4>';
+        for (var i = 0; i < grades.length; i++) {
+            div.innerHTML +=
+                '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
+                grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '%<br>' : '+%');
+        }
+        return div;
+    };
+    legend.addTo(map);
+
+</script>
+
 </body>
 </html>
