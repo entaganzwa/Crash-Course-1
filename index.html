@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Flood Archive (1985-Present)</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        .legend {
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+            line-height: 1.5;
+        }
+        .legend i {
+            width: 18px;
+            height: 18px;
+            float: left;
+            margin-right: 8px;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <!-- Leaflet JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // Initialize the map (Global view)
+        const map = L.map('map').setView([15, 0], 2);
+
+        // Add a nice dark-mode map style (or standard OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Load your converted GeoJSON file
+        fetch('flood_data.json')
+            .then(response => {
+                if (!response.ok) throw new Error("Could not load data file.");
+                return response.json();
+            })
+            .then(data => {
+                L.geoJSON(data, {
+                    style: function(feature) {
+                        return {
+                            color: "#ff4d4d", // Bright red for flood areas
+                            weight: 1,
+                            fillOpacity: 0.5,
+                            fillColor: "#ff4d4d"
+                        };
+                    },
+                    onEachFeature: function (feature, layer) {
+                        const p = feature.properties;
+                        // Format the date (remove the time part)
+                        const startDate = p.BEGAN ? p.BEGAN.split('T')[0] : 'Unknown';
+                        const endDate = p.ENDED ? p.ENDED.split('T')[0] : 'Unknown';
+                        
+                        layer.bindPopup(`
+                            <div style="font-size: 14px;">
+                                <b style="font-size: 16px; color: #d32f2f;">${p.COUNTRY || 'Flood Event'}</b><br>
+                                <hr style="margin: 5px 0;">
+                                <b>📅 Date:</b> ${startDate} to ${endDate}<br>
+                                <b>⚠️ Cause:</b> ${p.MAINCAUSE || 'Unknown'}<br>
+                                <b>💀 Dead:</b> ${p.DEAD || 0}<br>
+                                <b>🏠 Displaced:</b> ${p.DISPLACED || 0}<br>
+                                <b>📏 Area:</b> ${Math.round(p.AREA || 0).toLocaleString()} km²
+                            </div>
+                        `, { maxWidth: 250 });
+                    }
+                }).addTo(map);
+            })
+            .catch(err => {
+                console.error("Error loading map data:", err);
+                alert("Could not load flood data. Make sure 'flood_data.json' is in the same folder.");
+            });
+    </script>
+</body>
+</html>
