@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Ghana Flood Risk: Health Infrastructure</title>
+    <title>Ghana Flood Risk: Health Infrastructure Filter</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -14,7 +14,6 @@
         .info h4 { margin: 0 0 5px; color: #333; }
         .legend { line-height: 18px; color: #555; }
         .legend i { width: 14px; height: 14px; float: left; margin-right: 8px; opacity: 0.8; border-radius: 50%; }
-        .legend .health-icon { border-radius: 2px; width: 14px; height: 14px; background: #e31a1c; border: 2px solid #fff; box-shadow: 0 0 2px #000; }
         .title-box { position: absolute; top: 10px; left: 50px; z-index: 1000; background: rgba(255,255,255,0.9); padding: 5px 15px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.2); border: 1px solid #ccc; }
         .title-box h2 { margin: 5px 0; font-size: 1.2em; color: #b30000; }
     </style>
@@ -22,8 +21,8 @@
 <body>
 
 <div class="title-box">
-    <h2>Ghana Health Facilities at Flood Risk</h2>
-    <p style="margin: 0; font-size: 0.9em; color: #666;">Highlighting sites within 5km of historic flood events</p>
+    <h2>Ghana Health Infrastructure Risk Explorer</h2>
+    <p style="margin: 0; font-size: 0.9em; color: #666;">Use the top-right menu to filter between "All Sites" and "At-Risk" sites.</p>
 </div>
 <div id="map"></div>
 
@@ -36,78 +35,89 @@
         attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // --- 1. Load Flood Events ---
-    function getFloodColor(s) {
-        return s >= 2.0 ? '#525252' : // Neutral dark for floods to make health sites pop
-               s >= 1.5 ? '#737373' : 
-                         '#969696';   
-    }
+    // Create Layer Groups
+    var floodLayer = L.layerGroup().addTo(map);
+    var riskZoneLayer = L.layerGroup().addTo(map);
+    var allHealthSitesLayer = L.layerGroup(); // Hidden by default
+    var atRiskHealthSitesLayer = L.layerGroup().addTo(map); // Visible by default
 
+    // --- 1. Load Flood Events ---
     Papa.parse("ghana_flood_events.csv", {
         download: true,
         header: true,
         complete: function(results) {
             results.data.forEach(function(row) {
                 if (row.lat && row.long) {
-                    var severity = parseFloat(row.Severity);
                     L.circle([row.lat, row.long], {
-                        color: getFloodColor(severity),
-                        fillColor: getFloodColor(severity),
-                        fillOpacity: 0.2,
-                        radius: 5000 // Show the 5km risk radius
-                    }).addTo(map);
+                        color: '#737373',
+                        fillColor: '#737373',
+                        fillOpacity: 0.1,
+                        radius: 5000 
+                    }).addTo(riskZoneLayer);
 
                     L.circleMarker([row.lat, row.long], {
                         color: '#000',
                         weight: 1,
                         fillColor: '#333',
                         fillOpacity: 0.8,
-                        radius: 5
-                    }).addTo(map).bindPopup("<b>Flood Event (ID: " + row.ID + ")</b><br>Cause: " + row.MainCause);
+                        radius: 4
+                    }).addTo(floodLayer).bindPopup("<b>Flood Event (ID: " + row.ID + ")</b><br>Cause: " + row.MainCause);
                 }
             });
         }
     });
 
-    // --- 2. Load At-Risk Health Sites ---
+    // --- 2. Load ALL Health Sites ---
+    Papa.parse("ghana_health_sites.csv", {
+        download: true,
+        header: true,
+        complete: function(results) {
+            results.data.forEach(function(site) {
+                if (site.Latitude && site.Longitude) {
+                    L.circleMarker([site.Latitude, site.Longitude], {
+                        color: '#0056b3',
+                        weight: 1,
+                        opacity: 0.5,
+                        fillColor: '#3399ff',
+                        fillOpacity: 0.4,
+                        radius: 4
+                    }).addTo(allHealthSitesLayer).bindPopup("<b>" + site.Name + "</b><br>Type: " + site.Type);
+                }
+            });
+        }
+    });
+
+    // --- 3. Load AT-RISK Health Sites ---
     Papa.parse("at_risk_health_sites.csv", {
         download: true,
         header: true,
         complete: function(results) {
             results.data.forEach(function(site) {
                 if (site.Latitude && site.Longitude) {
-                    // Using a distinct Square marker for Health Sites
-                    var healthMarker = L.circleMarker([site.Latitude, site.Longitude], {
+                    L.circleMarker([site.Latitude, site.Longitude], {
                         color: '#fff',
                         weight: 2,
                         opacity: 1,
-                        fillColor: '#e31a1c', // Bright red
+                        fillColor: '#e31a1c',
                         fillOpacity: 1,
                         radius: 8
-                    }).addTo(map);
-
-                    healthMarker.bindPopup("<b style='color:#e31a1c;'>AT-RISK FACILITY</b>" +
+                    }).addTo(atRiskHealthSitesLayer).bindPopup("<b style='color:#e31a1c;'>AT-RISK FACILITY</b>" +
                                    "<br><b>Name:</b> " + site.Name +
-                                   "<br><b>Type:</b> " + site.Type +
-                                   "<hr style='margin: 5px 0;'>" +
-                                   "<b>Distance to Flood:</b> " + site.Distance_km + " km" +
-                                   "<br><b>Nearest Flood ID:</b> " + site.Nearest_Flood_ID);
+                                   "<br><b>Distance to Flood:</b> " + site.Distance_km + " km");
                 }
             });
         }
     });
 
-    // Legend
-    var legend = L.control({position: 'bottomright'});
-    legend.onAdd = function (map) {
-        var div = L.DomUtil.create('div', 'info legend');
-        div.innerHTML += '<h4>Map Legend</h4>';
-        div.innerHTML += '<i class="health-icon"></i> <b style="color:#e31a1c;">At-Risk Health Site</b><br>';
-        div.innerHTML += '<i style="background:#737373; border-radius:50%;"></i> Historic Flood Event<br>';
-        div.innerHTML += '<i style="background:rgba(150,150,150,0.2); border:1px solid #999;"></i> 5km Risk Zone';
-        return div;
+    // --- Layer Control (The Filter) ---
+    var overlayMaps = {
+        "<span style='color: #e31a1c; font-weight: bold;'>At-Risk Health Sites</span>": atRiskHealthSitesLayer,
+        "<span style='color: #0056b3;'>All Health Sites (Ghana)</span>": allHealthSitesLayer,
+        "Flood Events": floodLayer,
+        "5km Risk Zones": riskZoneLayer
     };
-    legend.addTo(map);
+
+    L.control.layers(null, overlayMaps, {collapsed: false}).addTo(map);
 
 </script>
 
