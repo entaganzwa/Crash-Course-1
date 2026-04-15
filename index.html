@@ -38,6 +38,17 @@
         'Bugesera': [-2.15, 30.10]
     };
 
+    // Population data from 2022 Census
+    var districtPopulations = {
+        'Nyagatare': 653861,
+        'Gatsibo': 551164,
+        'Bugesera': 551103,
+        'Rwamagana': 484953,
+        'Kirehe': 460860,
+        'Kayonza': 457156,
+        'Ngoma': 404048
+    };
+
     function getColor(d) {
         return d > 100 ? '#006837' : // Very Wet
                d > 80  ? '#78c679' : // Normal
@@ -75,7 +86,10 @@
                         radius: 15
                     }).addTo(map);
 
+                    var pop = districtPopulations[name] ? districtPopulations[name].toLocaleString() : "Unknown";
+
                     circle.bindPopup("<b>District:</b> " + name + 
+                                   "<br><b>Population (2022):</b> " + pop +
                                    "<br><b>Latest Date:</b> " + d.date + 
                                    "<br><b>Rainfall % of Normal:</b> " + rfq.toFixed(1) + "%" +
                                    "<br><b>Severity:</b> " + (rfq < 50 ? "Severe Drought" : rfq < 80 ? "Moderate Drought" : "Normal/Wet"));

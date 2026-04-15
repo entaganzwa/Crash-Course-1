@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rwanda Eastern Province Drought Impact Map</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        #map { height: 100vh; width: 100%; }
+        .info-box { 
+            padding: 10px; 
+            background: white; 
+            background: rgba(255,255,255,0.9); 
+            box-shadow: 0 0 15px rgba(0,0,0,0.2); 
+            border-radius: 5px;
+            max-width: 300px;
+        }
+        .info-box h3 { margin: 0 0 5px; color: #b30000; }
+        .legend { 
+            line-height: 24px; 
+            color: #555; 
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.2);
+        }
+        .legend i { 
+            width: 18px; 
+            height: 18px; 
+            float: left; 
+            margin-right: 8px; 
+            opacity: 0.8; 
+            border: 1px solid #000;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script>
+    var map = L.map('map').setView([-1.9, 30.5], 9);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap | 2022 Census Data | NISR Impact Reports'
+    }).addTo(map);
+
+    var districtCoords = {
+        'Nyagatare': [-1.30, 30.33],
+        'Gatsibo': [-1.60, 30.45],
+        'Kayonza': [-1.85, 30.65],
+        'Rwamagana': [-1.95, 30.43],
+        'Ngoma': [-2.15, 30.48],
+        'Kirehe': [-2.27, 30.65],
+        'Bugesera': [-2.15, 30.10]
+    };
+
+    var districtPopulations = {
+        'Nyagatare': 653861,
+        'Gatsibo': 551164,
+        'Bugesera': 551103,
+        'Rwamagana': 484953,
+        'Kirehe': 460860,
+        'Kayonza': 457156,
+        'Ngoma': 404048
+    };
+
+    var districtImpacts = {
+        'Kirehe': {
+            severity: 'Critical',
+            color: '#7f0000',
+            details: "Hardest hit. Over 36,000 households required emergency food aid. Significant failure of maize and bean crops in non-irrigated areas."
+        },
+        'Kayonza': {
+            severity: 'High',
+            color: '#d7301f',
+            details: "Up to 50% wilting of beans and maize observed in late 2021. Below average production reported in 2022."
+        },
+        'Nyagatare': {
+            severity: 'High',
+            color: '#d7301f',
+            details: "Erratic rains and below-average yields. Rift Valley Fever (RVF) outbreak affected livestock productivity."
+        },
+        'Bugesera': {
+            severity: 'Moderate-High',
+            color: '#ef6548',
+            details: "Severe water stress. Government intervention with 21,600 kg of fertilizer to salvage production in Rweru and Mayange."
+        },
+        'Gatsibo': {
+            severity: 'Moderate',
+            color: '#fc8d59',
+            details: "Significant reduction in bean and soybean productivity. Decline in pasture quality affecting livestock."
+        },
+        'Ngoma': {
+            severity: 'Moderate',
+            color: '#fc8d59',
+            details: "Localized production shortfalls in maize and pulses (beans) sensitive to short rain irregularities."
+        },
+        'Rwamagana': {
+            severity: 'Moderate',
+            color: '#fc8d59',
+            details: "Shortfalls in maize and pulses production due to irregular Season A rainfall."
+        }
+    };
+
+    Object.keys(districtImpacts).forEach(function(name) {
+        var impact = districtImpacts[name];
+        var coords = districtCoords[name];
+        var pop = districtPopulations[name].toLocaleString();
+
+        var marker = L.circleMarker(coords, {
+            radius: 18,
+            fillColor: impact.color,
+            color: "#000",
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.8
+        }).addTo(map);
+
+        marker.bindPopup("<div class='info-box'>" +
+            "<h3>" + name + "</h3>" +
+            "<b>Severity:</b> " + impact.severity + "<br>" +
+            "<b>Population:</b> " + pop + "<br><br>" +
+            "<b>Impact Details:</b><br>" + impact.details +
+            "</div>");
+    });
+
+    // Legend
+    var legend = L.control({position: 'bottomright'});
+    legend.onAdd = function (map) {
+        var div = L.DomUtil.create('div', 'legend');
+        div.innerHTML += '<h4>Drought Impact Severity</h4>';
+        div.innerHTML += '<i style="background: #7f0000"></i> Critical Impact<br>';
+        div.innerHTML += '<i style="background: #d7301f"></i> High Impact<br>';
+        div.innerHTML += '<i style="background: #ef6548"></i> Moderate-High Impact<br>';
+        div.innerHTML += '<i style="background: #fc8d59"></i> Moderate Impact<br>';
+        div.innerHTML += '<br><small>Based on 2021-2022 Reports</small>';
+        return div;
+    };
+    legend.addTo(map);
+
+    // Title Control
+    var title = L.control({position: 'topright'});
+    title.onAdd = function (map) {
+        var div = L.DomUtil.create('div', 'info-box');
+        div.innerHTML = '<h2>2021-2022 Drought Damages</h2>' +
+                        '<p>Estimated economic loss for province: <b>$2M - $7.5M USD</b></p>';
+        return div;
+    };
+    title.addTo(map);
+
+</script>
+
+</body>
+</html>
