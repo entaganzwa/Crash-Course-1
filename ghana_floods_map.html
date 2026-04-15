@@ -1,123 +1,189 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Ghana Flood Risk: Health Infrastructure Filter</title>
+    <title>Ghana Flood Risk Dashboard</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Modern Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet & Plugins -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        :root {
+            --danger-red: #e31a1c;
+            --info-blue: #2b8cbe;
+            --dark-gray: #333;
+            --glass-white: rgba(255, 255, 255, 0.95);
+        }
+
+        body { margin: 0; padding: 0; font-family: 'Montserrat', sans-serif; background: #f4f4f4; }
         #map { height: 100vh; width: 100%; }
-        .info { padding: 10px 12px; background: white; background: rgba(255,255,255,0.9); box-shadow: 0 0 15px rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid #ccc; }
-        .info h4 { margin: 0 0 5px; color: #333; }
-        .legend { line-height: 18px; color: #555; }
-        .legend i { width: 14px; height: 14px; float: left; margin-right: 8px; opacity: 0.8; border-radius: 50%; }
-        .title-box { position: absolute; top: 10px; left: 50px; z-index: 1000; background: rgba(255,255,255,0.9); padding: 5px 15px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.2); border: 1px solid #ccc; }
-        .title-box h2 { margin: 5px 0; font-size: 1.2em; color: #b30000; }
+
+        /* Dashboard Sidebar */
+        .sidebar {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 320px;
+            z-index: 1000;
+            background: var(--glass-white);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 25px rgba(0,0,0,0.15);
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        .sidebar h2 { margin: 0 0 10px; font-size: 1.4em; color: var(--dark-gray); border-bottom: 3px solid var(--danger-red); display: inline-block; padding-bottom: 5px; }
+        .sidebar p { font-size: 0.9em; color: #666; line-height: 1.5; margin: 15px 0; }
+        
+        .stat-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid var(--danger-red);
+        }
+        .stat-number { font-size: 1.8em; font-weight: bold; color: var(--danger-red); display: block; }
+        .stat-label { font-size: 0.8em; text-transform: uppercase; color: #888; letter-spacing: 1px; }
+
+        /* Customizing Leaflet Controls */
+        .leaflet-control-layers { border-radius: 8px !important; box-shadow: 0 2px 15px rgba(0,0,0,0.1) !important; padding: 10px !important; border: none !important; }
+        
+        /* Legend Styles */
+        .legend { padding: 12px; background: var(--glass-white); border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); line-height: 22px; }
+        .legend i { width: 14px; height: 14px; float: left; margin-right: 10px; margin-top: 4px; border-radius: 50%; }
+
+        /* Popup Customization */
+        .leaflet-popup-content-wrapper { border-radius: 12px; padding: 5px; }
+        .leaflet-popup-tip-container { display: none; }
+        .popup-header { font-weight: bold; color: var(--danger-red); margin-bottom: 5px; font-size: 1.1em; }
     </style>
 </head>
 <body>
 
-<div class="title-box">
-    <h2>Ghana Health Infrastructure Risk Explorer</h2>
-    <p style="margin: 0; font-size: 0.9em; color: #666;">Use the top-right menu to filter between "All Sites" and "At-Risk" sites.</p>
+<div class="sidebar">
+    <h2>Risk Dashboard</h2>
+    <p>This explorer identifies health infrastructure in Ghana located within high-risk flood impact zones.</p>
+    
+    <div class="stat-card">
+        <span class="stat-number">36</span>
+        <span class="stat-label">Facilities at Risk</span>
+    </div>
+    
+    <div style="font-size: 0.75em; color: #999; margin-top: 20px;">
+        Data Sources: OpenStreetMap, Overpass API, Historic Flood Archive.
+    </div>
 </div>
+
 <div id="map"></div>
 
 <script>
-    // Center map on Ghana
-    var map = L.map('map').setView([7.9465, -1.0232], 7);
+    // 1. Initialize Map with a soft, modern basemap (CartoDB Voyager)
+    var map = L.map('map', {
+        center: [7.9465, -1.0232],
+        zoom: 7,
+        zoomControl: false // Move zoom control later
+    });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap'
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '©OpenStreetMap, ©CartoDB',
+        subdomains: 'abcd',
+        maxZoom: 20
     }).addTo(map);
 
-    // Create Layer Groups
+    L.control.zoom({ position: 'bottomleft' }).addTo(map);
+
+    // 2. Setup Layer Groups & Clusters
     var floodLayer = L.layerGroup().addTo(map);
     var riskZoneLayer = L.layerGroup().addTo(map);
-    var allHealthSitesLayer = L.layerGroup(); // Hidden by default
-    var atRiskHealthSitesLayer = L.layerGroup().addTo(map); // Visible by default
+    var atRiskLayer = L.layerGroup().addTo(map);
+    var allHealthCluster = L.markerClusterGroup({
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true
+    });
 
-    // --- 1. Load Flood Events ---
+    // 3. Load & Process Data
+    // --- Flood Events ---
     Papa.parse("ghana_flood_events.csv", {
-        download: true,
-        header: true,
+        download: true, header: true,
         complete: function(results) {
             results.data.forEach(function(row) {
                 if (row.lat && row.long) {
                     L.circle([row.lat, row.long], {
-                        color: '#737373',
-                        fillColor: '#737373',
-                        fillOpacity: 0.1,
-                        radius: 5000 
+                        color: '#bbb', weight: 1, fillColor: '#ccc', fillOpacity: 0.1, radius: 5000 
                     }).addTo(riskZoneLayer);
 
                     L.circleMarker([row.lat, row.long], {
-                        color: '#000',
-                        weight: 1,
-                        fillColor: '#333',
-                        fillOpacity: 0.8,
-                        radius: 4
+                        color: '#000', weight: 1, fillColor: '#333', fillOpacity: 0.8, radius: 4
                     }).addTo(floodLayer).bindPopup("<b>Flood Event (ID: " + row.ID + ")</b><br>Cause: " + row.MainCause);
                 }
             });
         }
     });
 
-    // --- 2. Load ALL Health Sites ---
+    // --- All Health Sites (with Clustering) ---
     Papa.parse("ghana_health_sites.csv", {
-        download: true,
-        header: true,
+        download: true, header: true,
         complete: function(results) {
             results.data.forEach(function(site) {
                 if (site.Latitude && site.Longitude) {
-                    L.circleMarker([site.Latitude, site.Longitude], {
-                        color: '#0056b3',
-                        weight: 1,
-                        opacity: 0.5,
-                        fillColor: '#3399ff',
-                        fillOpacity: 0.4,
-                        radius: 4
-                    }).addTo(allHealthSitesLayer).bindPopup("<b>" + site.Name + "</b><br>Type: " + site.Type);
+                    var marker = L.circleMarker([site.Latitude, site.Longitude], {
+                        color: '#2b8cbe', weight: 1, fillColor: '#74a9cf', fillOpacity: 0.6, radius: 5
+                    }).bindPopup("<b>" + site.Name + "</b><br>Type: " + site.Type);
+                    allHealthCluster.addLayer(marker);
                 }
             });
         }
     });
 
-    // --- 3. Load AT-RISK Health Sites ---
+    // --- At-Risk Sites (The Highlight) ---
     Papa.parse("at_risk_health_sites.csv", {
-        download: true,
-        header: true,
+        download: true, header: true,
         complete: function(results) {
             results.data.forEach(function(site) {
                 if (site.Latitude && site.Longitude) {
                     L.circleMarker([site.Latitude, site.Longitude], {
-                        color: '#fff',
-                        weight: 2,
-                        opacity: 1,
-                        fillColor: '#e31a1c',
-                        fillOpacity: 1,
-                        radius: 8
-                    }).addTo(atRiskHealthSitesLayer).bindPopup("<b style='color:#e31a1c;'>AT-RISK FACILITY</b>" +
-                                   "<br><b>Name:</b> " + site.Name +
-                                   "<br><b>Distance to Flood:</b> " + site.Distance_km + " km");
+                        color: '#fff', weight: 2, fillColor: '#e31a1c', fillOpacity: 1, radius: 9
+                    }).addTo(atRiskLayer).bindPopup(
+                        "<div class='popup-header'>⚠️ AT-RISK FACILITY</div>" +
+                        "<b>" + site.Name + "</b><br>" +
+                        "Distance to flood: <b>" + site.Distance_km + " km</b>"
+                    );
                 }
             });
         }
     });
 
-    // --- Layer Control (The Filter) ---
-    var overlayMaps = {
-        "<span style='color: #e31a1c; font-weight: bold;'>At-Risk Health Sites</span>": atRiskHealthSitesLayer,
-        "<span style='color: #0056b3;'>All Health Sites (Ghana)</span>": allHealthSitesLayer,
-        "Flood Events": floodLayer,
-        "5km Risk Zones": riskZoneLayer
+    // 4. Interface Controls
+    var overlays = {
+        "<span style='color:#e31a1c; font-weight:bold;'>Show At-Risk Sites</span>": atRiskLayer,
+        "Show All Health Sites": allHealthCluster,
+        "Show Risk Buffer (5km)": riskZoneLayer,
+        "Show Flood Points": floodLayer
     };
 
-    L.control.layers(null, overlayMaps, {collapsed: false}).addTo(map);
+    L.control.layers(null, overlays, {collapsed: false, position: 'topright'}).addTo(map);
+
+    // Legend
+    var legend = L.control({position: 'bottomright'});
+    legend.onAdd = function (map) {
+        var div = L.DomUtil.create('div', 'legend');
+        div.innerHTML += '<i style="background:#e31a1c;"></i> <b>At-Risk Facility</b><br>';
+        div.innerHTML += '<i style="background:#74a9cf;"></i> Normal Facility<br>';
+        div.innerHTML += '<i style="background:#333;"></i> Flood Event<br>';
+        return div;
+    };
+    legend.addTo(map);
 
 </script>
 
