@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Ghana Historic Flood Events Map</title>
+    <title>Ghana Flood Risk: Health Infrastructure</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -13,16 +13,17 @@
         .info { padding: 10px 12px; background: white; background: rgba(255,255,255,0.9); box-shadow: 0 0 15px rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid #ccc; }
         .info h4 { margin: 0 0 5px; color: #333; }
         .legend { line-height: 18px; color: #555; }
-        .legend i { width: 18px; height: 18px; float: left; margin-right: 8px; opacity: 0.7; border-radius: 50%; }
+        .legend i { width: 14px; height: 14px; float: left; margin-right: 8px; opacity: 0.8; border-radius: 50%; }
+        .legend .health-icon { border-radius: 2px; width: 14px; height: 14px; background: #e31a1c; border: 2px solid #fff; box-shadow: 0 0 2px #000; }
         .title-box { position: absolute; top: 10px; left: 50px; z-index: 1000; background: rgba(255,255,255,0.9); padding: 5px 15px; border-radius: 8px; box-shadow: 0 0 15px rgba(0,0,0,0.2); border: 1px solid #ccc; }
-        .title-box h2 { margin: 5px 0; font-size: 1.2em; color: #0056b3; }
+        .title-box h2 { margin: 5px 0; font-size: 1.2em; color: #b30000; }
     </style>
 </head>
 <body>
 
 <div class="title-box">
-    <h2>Ghana Historic Flood Events</h2>
-    <p style="margin: 0; font-size: 0.9em; color: #666;">Visualizing impact by severity and displacement</p>
+    <h2>Ghana Health Facilities at Flood Risk</h2>
+    <p style="margin: 0; font-size: 0.9em; color: #666;">Highlighting sites within 5km of historic flood events</p>
 </div>
 <div id="map"></div>
 
@@ -30,53 +31,67 @@
     // Center map on Ghana
     var map = L.map('map').setView([7.9465, -1.0232], 7);
 
-    // Darker, cleaner base map to make data points pop
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    // Color based on Severity (1, 1.5, 2)
-    function getColor(s) {
-        return s >= 2.0 ? '#800026' : // Very Severe
-               s >= 1.5 ? '#f03b20' : // Severe
-                         '#feb24c';   // Moderate
-    }
-
-    // Scale radius by Displaced people (with a minimum size)
-    function getRadius(displaced) {
-        var d = parseFloat(displaced) || 0;
-        return Math.sqrt(d) / 15 + 5; // Square root scaling for area vs radius logic
+    // --- 1. Load Flood Events ---
+    function getFloodColor(s) {
+        return s >= 2.0 ? '#525252' : // Neutral dark for floods to make health sites pop
+               s >= 1.5 ? '#737373' : 
+                         '#969696';   
     }
 
     Papa.parse("ghana_flood_events.csv", {
         download: true,
         header: true,
         complete: function(results) {
-            var data = results.data;
-            
-            data.forEach(function(row) {
+            results.data.forEach(function(row) {
                 if (row.lat && row.long) {
                     var severity = parseFloat(row.Severity);
-                    var displaced = parseInt(row.Displaced) || 0;
-                    var dead = parseInt(row.Dead) || 0;
-
-                    var circle = L.circleMarker([row.lat, row.long], {
-                        color: '#333',
-                        weight: 1,
-                        opacity: 1,
-                        fillColor: getColor(severity),
-                        fillOpacity: 0.7,
-                        radius: getRadius(displaced)
+                    L.circle([row.lat, row.long], {
+                        color: getFloodColor(severity),
+                        fillColor: getFloodColor(severity),
+                        fillOpacity: 0.2,
+                        radius: 5000 // Show the 5km risk radius
                     }).addTo(map);
 
-                    circle.bindPopup("<b>Flood Event</b>" +
-                                   "<br><b>Date:</b> " + row.Began + " to " + row.Ended +
-                                   "<br><b>Main Cause:</b> " + row.MainCause +
+                    L.circleMarker([row.lat, row.long], {
+                        color: '#000',
+                        weight: 1,
+                        fillColor: '#333',
+                        fillOpacity: 0.8,
+                        radius: 5
+                    }).addTo(map).bindPopup("<b>Flood Event (ID: " + row.ID + ")</b><br>Cause: " + row.MainCause);
+                }
+            });
+        }
+    });
+
+    // --- 2. Load At-Risk Health Sites ---
+    Papa.parse("at_risk_health_sites.csv", {
+        download: true,
+        header: true,
+        complete: function(results) {
+            results.data.forEach(function(site) {
+                if (site.Latitude && site.Longitude) {
+                    // Using a distinct Square marker for Health Sites
+                    var healthMarker = L.circleMarker([site.Latitude, site.Longitude], {
+                        color: '#fff',
+                        weight: 2,
+                        opacity: 1,
+                        fillColor: '#e31a1c', // Bright red
+                        fillOpacity: 1,
+                        radius: 8
+                    }).addTo(map);
+
+                    healthMarker.bindPopup("<b style='color:#e31a1c;'>AT-RISK FACILITY</b>" +
+                                   "<br><b>Name:</b> " + site.Name +
+                                   "<br><b>Type:</b> " + site.Type +
                                    "<hr style='margin: 5px 0;'>" +
-                                   "<b>Displaced:</b> " + displaced.toLocaleString() + 
-                                   "<br><b>Fatalities:</b> " + dead +
-                                   "<br><b>Severity Score:</b> " + severity);
+                                   "<b>Distance to Flood:</b> " + site.Distance_km + " km" +
+                                   "<br><b>Nearest Flood ID:</b> " + site.Nearest_Flood_ID);
                 }
             });
         }
@@ -85,17 +100,11 @@
     // Legend
     var legend = L.control({position: 'bottomright'});
     legend.onAdd = function (map) {
-        var div = L.DomUtil.create('div', 'info legend'),
-            grades = [1, 1.5, 2],
-            labels = ["Moderate", "Severe", "Extreme"];
-
-        div.innerHTML += '<h4>Severity Score</h4>';
-        for (var i = 0; i < grades.length; i++) {
-            div.innerHTML +=
-                '<i style="background:' + getColor(grades[i]) + '"></i> ' +
-                labels[i] + '<br>';
-        }
-        div.innerHTML += '<hr><i>Circle size represents<br>number of displaced people.</i>';
+        var div = L.DomUtil.create('div', 'info legend');
+        div.innerHTML += '<h4>Map Legend</h4>';
+        div.innerHTML += '<i class="health-icon"></i> <b style="color:#e31a1c;">At-Risk Health Site</b><br>';
+        div.innerHTML += '<i style="background:#737373; border-radius:50%;"></i> Historic Flood Event<br>';
+        div.innerHTML += '<i style="background:rgba(150,150,150,0.2); border:1px solid #999;"></i> 5km Risk Zone';
         return div;
     };
     legend.addTo(map);
