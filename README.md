@@ -29,9 +29,9 @@ Once GitHub Pages is enabled in your repository settings, you can access the liv
 ## 📁 Project Structure
 - `index.html`: Main Leaflet map for rainfall anomalies.
 - `drought_damage_map.html`: Impact and damage visualization.
-- `eastern_province_drought.csv`: Source dataset for rainfall anomalies.
-- `rwa_rainfall_5ytd.csv`: 5-year year-to-date rainfall data.
-- `flood_data/`: Supplementary geo-data for flood events.
+- `ghana_floods_map.html`: Ghana flood risk dashboard.
+- `data/`: Folder containing all CSV, JSON, and XLSX data sources.
+- `scripts/`: Python scripts for data processing and analysis.
 
 ---
 *Data Source: National Institute of Statistics of Rwanda (NISR), 2022 Population and Housing Census, and FAO/WFP Impact Reports.*

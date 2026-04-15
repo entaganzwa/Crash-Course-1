@@ -2,7 +2,7 @@ import pandas as pd
 
 # 1. Read the Excel file (the FloodArchive)
 # We use pandas, which is a powerful tool for working with tables.
-filename = 'floodarchive.xlsx'
+filename = 'data/floodarchive.xlsx'
 print(f"Reading {filename}...")
 df = pd.read_excel(filename)
 
@@ -13,7 +13,7 @@ df = pd.read_excel(filename)
 ghana_floods = df[df['Country'].str.strip() == 'Ghana']
 
 # 3. Save the result as a new CSV file
-output_filename = 'ghana_flood_events.csv'
+output_filename = 'data/ghana_flood_events.csv'
 print(f"Found {len(ghana_floods)} events for Ghana. Saving to {output_filename}...")
 ghana_floods.to_csv(output_filename, index=False)
 

@@ -114,7 +114,7 @@
 
     // 3. Load & Process Data
     // --- Flood Events ---
-    Papa.parse("ghana_flood_events.csv", {
+    Papa.parse("data/ghana_flood_events.csv", {
         download: true, header: true,
         complete: function(results) {
             results.data.forEach(function(row) {
@@ -132,7 +132,7 @@
     });
 
     // --- All Health Sites (with Clustering) ---
-    Papa.parse("ghana_health_sites.csv", {
+    Papa.parse("data/ghana_health_sites.csv", {
         download: true, header: true,
         complete: function(results) {
             results.data.forEach(function(site) {
@@ -147,7 +147,7 @@
     });
 
     // --- At-Risk Sites (The Highlight) ---
-    Papa.parse("at_risk_health_sites.csv", {
+    Papa.parse("data/at_risk_health_sites.csv", {
         download: true, header: true,
         complete: function(results) {
             results.data.forEach(function(site) {
