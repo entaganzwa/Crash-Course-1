@@ -7,6 +7,7 @@ Once GitHub Pages is enabled in your repository settings, you can access the liv
 
 *   **[Current Rainfall & Population Map](https://entaganzwa.github.io/Crash-Course-1/index.html)**: Shows the latest rainfall anomalies (% of normal) by district, integrated with 2022 Census population data.
 *   **[Drought Damage & Impact Map](https://entaganzwa.github.io/Crash-Course-1/drought_damage_map.html)**: Visualizes the agricultural and economic impacts of the 2021-2022 drought cycle, including household assistance and crop loss details.
+*   **[Ghana Historic Flood Events Map](https://entaganzwa.github.io/Crash-Course-1/ghana_floods_map.html)**: Interactive map of historic flood events in Ghana, showing severity and human impact (displacement).
 
 ## 📊 2022 Population Data by District
 | District | Population (2022 Census) |
