@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Flood Analysis Dashboard</title>
+    <!-- We're using a modern font to make it look clean -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Chart.js is the library that helps us draw beautiful charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PapaParse is a great tool for reading CSV (table) files easily -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            margin: 0;
+            padding: 20px;
+            color: #1c1e21;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .nav-menu { 
+            background: #333; 
+            padding: 10px; 
+            color: white; 
+            margin-bottom: 20px; 
+            border-radius: 8px;
+            text-align: center;
+        }
+        .nav-menu a { color: #fff; margin: 0 15px; text-decoration: none; font-weight: bold; }
+        
+        /* This layout creates a grid of "cards" for our charts */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .chart-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 1px solid #e1e4e8;
+        }
+        .chart-card h3 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            color: #4b5563;
+            border-bottom: 1px solid #f3f4f6;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        canvas {
+            width: 100% !important;
+            height: 300px !important;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="nav-menu">
+        <a href="index.html">Rainfall Map</a>
+        <a href="drought_damage_map.html">Drought Damage</a>
+        <a href="ghana_floods_map.html">Ghana Flood Map</a>
+        <a href="flood_analysis.html">Flood Analysis Charts</a>
+    </div>
+
+    <div class="header">
+        <h1>Global Flood Analysis (1985-2022)</h1>
+        <p>Visualizing historic flood data using Chart.js</p>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Card 1: Top Countries -->
+        <div class="chart-card">
+            <h3>🌍 Top 20 Countries by Flood Events</h3>
+            <canvas id="countryChart"></canvas>
+        </div>
+
+        <!-- Card 2: Events over Time -->
+        <div class="chart-card">
+            <h3>📈 Flood Events per Year</h3>
+            <canvas id="yearChart"></canvas>
+        </div>
+
+        <!-- Card 3: Categories -->
+        <div class="chart-card">
+            <h3>🏷️ Flood Events by Category</h3>
+            <canvas id="categoryChart"></canvas>
+        </div>
+
+        <!-- Card 4: Displacement vs Severity -->
+        <div class="chart-card">
+            <h3>⚠️ Total Displaced by Severity Level</h3>
+            <canvas id="severityChart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // We load the CSV file using PapaParse
+        Papa.parse("data/flood_analysis_clean.csv", {
+            download: true,
+            header: true,
+            complete: function(results) {
+                const data = results.data;
+                processData(data);
+            }
+        });
+
+        function processData(data) {
+            // 1. Data Prep for Bar Chart (Top 20 Countries)
+            const countryCounts = {};
+            // 2. Data Prep for Line Chart (Years)
+            const yearCounts = {};
+            // 3. Data Prep for Bar Chart (Categories)
+            const categoryCounts = {};
+            // 4. Data Prep for Severity (Total Displaced)
+            const severityDisplaced = {};
+
+            data.forEach(row => {
+                // Count countries
+                if (row.Country) {
+                    countryCounts[row.Country] = (countryCounts[row.Country] || 0) + 1;
+                }
+                // Count years
+                if (row.Year) {
+                    yearCounts[row.Year] = (yearCounts[row.Year] || 0) + 1;
+                }
+                // Count categories
+                if (row.categorised_reason) {
+                    categoryCounts[row.categorised_reason] = (categoryCounts[row.categorised_reason] || 0) + 1;
+                }
+                // Total displaced by severity
+                if (row.Severity && row.Displaced) {
+                    const sev = row.Severity;
+                    const disp = parseInt(row.Displaced) || 0;
+                    severityDisplaced[sev] = (severityDisplaced[sev] || 0) + disp;
+                }
+            });
+
+            // CREATE CHART 1: Top 20 Countries
+            const topCountries = Object.entries(countryCounts)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 20);
+            
+            createBarChart('countryChart', 
+                topCountries.map(d => d[0]), 
+                topCountries.map(d => d[1]), 
+                'Number of Events', '#3b82f6');
+
+            // CREATE CHART 2: Years Line Chart
+            const sortedYears = Object.keys(yearCounts).sort();
+            createLineChart('yearChart', 
+                sortedYears, 
+                sortedYears.map(y => yearCounts[y]), 
+                'Events per Year', '#10b981');
+
+            // CREATE CHART 3: Categories
+            const sortedCategories = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1]);
+            createBarChart('categoryChart', 
+                sortedCategories.map(d => d[0]), 
+                sortedCategories.map(d => d[1]), 
+                'Events by Cause', '#f59e0b');
+
+            // CREATE CHART 4: Severity
+            const sortedSeverity = Object.keys(severityDisplaced).sort();
+            createBarChart('severityChart', 
+                sortedSeverity.map(s => "Level " + s), 
+                sortedSeverity.map(s => severityDisplaced[s]), 
+                'Total People Displaced', '#ef4444');
+        }
+
+        function createBarChart(canvasId, labels, data, label, color) {
+            new Chart(document.getElementById(canvasId), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        backgroundColor: color,
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+
+        function createLineChart(canvasId, labels, data, label, color) {
+            new Chart(document.getElementById(canvasId), {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        borderColor: color,
+                        backgroundColor: color + '22', // Adding transparency
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
