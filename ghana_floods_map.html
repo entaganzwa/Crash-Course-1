@@ -16,6 +16,7 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
         :root {
@@ -26,12 +27,15 @@
         }
 
         body { margin: 0; padding: 0; font-family: 'Montserrat', sans-serif; background: #f4f4f4; }
-        #map { height: 100vh; width: 100%; }
+        .nav-menu { background: #333; padding: 10px; color: white; }
+        .nav-menu a { color: #fff; margin-right: 20px; text-decoration: none; font-weight: bold; }
+        .nav-menu a:hover { text-decoration: underline; }
+        #map { height: calc(100vh - 40px); width: 100%; }
 
         /* Dashboard Sidebar */
         .sidebar {
             position: absolute;
-            top: 20px;
+            top: 60px;
             left: 20px;
             width: 320px;
             z-index: 1000;
@@ -70,13 +74,28 @@
 </head>
 <body>
 
+<div class="nav-menu">
+    <a href="index.html">Rwanda Rainfall Map</a>
+    <a href="drought_damage_map.html">Drought Damage Map</a>
+    <a href="ghana_floods_map.html">Ghana Flood Map</a>
+</div>
+
 <div class="sidebar">
     <h2>Risk Dashboard</h2>
     <p>This explorer identifies health infrastructure in Ghana located within high-risk flood impact zones.</p>
     
     <div class="stat-card">
-        <span class="stat-number">36</span>
+        <span id="at-risk-count" class="stat-number">...</span>
         <span class="stat-label">Facilities at Risk</span>
+    </div>
+
+    <div class="stat-card" style="border-left-color: #333;">
+        <span id="flood-count" class="stat-number">...</span>
+        <span class="stat-label">Historic Flood Events</span>
+    </div>
+
+    <div style="margin-top: 20px; background: white; padding: 10px; border-radius: 8px;">
+        <canvas id="floodChart" height="150"></canvas>
     </div>
     
     <div style="font-size: 0.75em; color: #999; margin-top: 20px;">
@@ -117,15 +136,45 @@
     Papa.parse("data/ghana_flood_events.csv", {
         download: true, header: true,
         complete: function(results) {
+            var eventCount = 0;
+            var years = {};
+            
             results.data.forEach(function(row) {
                 if (row.lat && row.long) {
+                    eventCount++;
+                    var year = row.Began ? row.Began.substring(0, 4) : "Unknown";
+                    years[year] = (years[year] || 0) + 1;
+
                     L.circle([row.lat, row.long], {
                         color: '#bbb', weight: 1, fillColor: '#ccc', fillOpacity: 0.1, radius: 5000 
                     }).addTo(riskZoneLayer);
 
                     L.circleMarker([row.lat, row.long], {
                         color: '#000', weight: 1, fillColor: '#333', fillOpacity: 0.8, radius: 4
-                    }).addTo(floodLayer).bindPopup("<b>Flood Event (ID: " + row.ID + ")</b><br>Cause: " + row.MainCause);
+                    }).addTo(floodLayer).bindPopup("<b>Flood Event (ID: " + row.ID + ")</b><br>Cause: " + row.MainCause + "<br>Year: " + year);
+                }
+            });
+
+            document.getElementById('flood-count').innerText = eventCount;
+
+            // Render Chart
+            var sortedYears = Object.keys(years).sort();
+            var ctx = document.getElementById('floodChart').getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedYears,
+                    datasets: [{
+                        label: 'Events per Year',
+                        data: sortedYears.map(y => years[y]),
+                        backgroundColor: '#333'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
                 }
             });
         }
@@ -150,8 +199,10 @@
     Papa.parse("data/at_risk_health_sites.csv", {
         download: true, header: true,
         complete: function(results) {
+            var count = 0;
             results.data.forEach(function(site) {
                 if (site.Latitude && site.Longitude) {
+                    count++;
                     L.circleMarker([site.Latitude, site.Longitude], {
                         color: '#fff', weight: 2, fillColor: '#e31a1c', fillOpacity: 1, radius: 9
                     }).addTo(atRiskLayer).bindPopup(
@@ -161,6 +212,7 @@
                     );
                 }
             });
+            document.getElementById('at-risk-count').innerText = count;
         }
     });
 

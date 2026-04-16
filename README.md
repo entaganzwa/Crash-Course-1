@@ -26,7 +26,21 @@ Once GitHub Pages is enabled in your repository settings, you can access the liv
 *   **Agricultural Production:** Maize and bean yields dropped significantly (up to 50% wilting in some districts like Kayonza).
 *   **Livestock:** Pasture degradation and Rift Valley Fever outbreaks in Nyagatare and Kayonza.
 
-## 📁 Project Structure
+## 🛠️ Data Processing
+The project includes Python scripts to filter and prepare data from raw sources:
+
+- `scripts/filter_ghana_floods.py`: Filters the global FloodArchive Excel file for Ghana-specific events.
+- `scripts/filter_rwanda_drought.py`: Filters the Rwanda 5-year rainfall dataset for Eastern Province districts and adds descriptive names.
+
+To run these scripts, ensure you have `pandas` and `openpyxl` installed:
+```bash
+pip install pandas openpyxl
+python3 scripts/filter_rwanda_drought.py
+python3 scripts/filter_ghana_floods.py
+```
+
+## 📂 Project Structure
+
 - `index.html`: Main Leaflet map for rainfall anomalies.
 - `drought_damage_map.html`: Impact and damage visualization.
 - `ghana_floods_map.html`: Ghana flood risk dashboard.
