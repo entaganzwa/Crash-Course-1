@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoData Explorer - Drag & Drop</title>
+    
+    <!-- Modern UI dependencies -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --success: #10b981;
+            --dark: #1f2937;
+        }
+        
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        #map {
+            height: calc(100vh - 45px);
+            width: 100%;
+            z-index: 1;
+        }
+
+        .nav-menu { 
+            background: #333; 
+            padding: 10px; 
+            color: white; 
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+        .nav-menu a { color: #fff; margin: 0 15px; text-decoration: none; font-weight: bold; font-size: 0.9rem; }
+        .nav-menu a:hover { text-decoration: underline; }
+
+        /* Drag & Drop Overlay */
+        #drop-zone {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            max-width: 600px;
+            background: rgba(255, 255, 255, 0.95);
+            border: 3px dashed #cbd5e1;
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            z-index: 1000;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+
+        #drop-zone.dragover {
+            border-color: var(--primary);
+            background: rgba(239, 246, 255, 0.98);
+            transform: translateX(-50%) scale(1.02);
+        }
+
+        #drop-zone i {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+
+        #drop-zone h2 { margin: 10px 0; color: var(--dark); }
+        #drop-zone p { color: #64748b; margin-bottom: 0; }
+
+        /* Stats Overlay */
+        #data-status {
+            position: absolute;
+            bottom: 25px;
+            left: 25px;
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: none;
+            max-width: 250px;
+            border-left: 5px solid var(--success);
+        }
+
+        .hidden { display: none !important; }
+
+        /* Popup Styling */
+        .leaflet-popup-content-wrapper { border-radius: 12px; padding: 10px; }
+        .leaflet-popup-content b { color: var(--primary); font-size: 1.1em; display: block; margin-bottom: 8px; border-bottom: 2px solid #eee; padding-bottom: 5px; }
+        .data-table { font-size: 0.8rem; margin-top: 5px; border-collapse: collapse; width: 100%; }
+        .data-table td { padding: 4px 6px; border-bottom: 1px solid #eee; vertical-align: top; }
+        .data-table td:first-child { font-weight: bold; color: #666; width: 45%; background: #f9fafb; }
+        .data-table tr:last-child td { border-bottom: none; }
+    </style>
+</head>
+<body>
+
+    <div class="nav-menu">
+        <a href="index.html">Rainfall Map</a>
+        <a href="drought_damage_map.html">Drought Damage</a>
+        <a href="ghana_floods_map.html">Ghana Flood Map</a>
+        <a href="flood_analysis.html">Flood Analysis</a>
+        <a href="map_explorer.html">GeoData Explorer</a>
+    </div>
+
+    <!-- Drop Zone UI -->
+    <div id="drop-zone">
+        <i class="fas fa-cloud-upload-alt"></i>
+        <h2>Map Visualization App</h2>
+        <p>Drag and drop your <b>CSV file</b> here to visualize it on the map.</p>
+        <p style="font-size: 0.85rem; margin-top: 15px; background: #f1f5f9; padding: 8px; border-radius: 6px;">Supports columns like <b>anonymous_lat/long</b>, <b>lat/long</b>, <b>latitude/longitude</b>.</p>
+    </div>
+
+    <!-- Status Box -->
+    <div id="data-status">
+        <b id="status-filename" style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">No file loaded</b>
+        <span id="status-count">0 points mapped</span>
+        <button onclick="resetApp()" style="margin-top: 12px; width: 100%; padding: 8px; cursor: pointer; border-radius: 6px; border: 1px solid #e2e8f0; background: #fff; font-weight: 600; color: #64748b; transition: all 0.2s;">
+            <i class="fas fa-trash-alt" style="margin-right: 5px;"></i> Clear Map
+        </button>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        // --- 1. Map Setup ---
+        const map = L.map('map', {
+            zoomControl: false
+        }).setView([0, 0], 2);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '©OpenStreetMap ©CartoDB'
+        }).addTo(map);
+
+        L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+        let dataLayer = L.featureGroup().addTo(map);
+
+        // --- 2. Drag & Drop Logic ---
+        const dropZone = document.getElementById('drop-zone');
+
+        ['dragover', 'dragleave', 'drop'].forEach(evt => {
+            window.addEventListener(evt, e => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+
+        window.addEventListener('dragover', () => dropZone.classList.add('dragover'));
+        window.addEventListener('dragleave', (e) => {
+            if (e.relatedTarget === null) dropZone.classList.remove('dragover');
+        });
+
+        window.addEventListener('drop', e => {
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && (file.name.endsWith('.csv') || file.name.endsWith('.txt'))) {
+                handleFile(file);
+            } else {
+                alert("Please drop a CSV file.");
+            }
+        });
+
+        // --- 3. Data Processing ---
+        function handleFile(file) {
+            Papa.parse(file, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.data && results.data.length > 0) {
+                        processResults(results.data, file.name);
+                    } else {
+                        alert("The file seems to be empty or incorrectly formatted.");
+                    }
+                },
+                error: function(err) {
+                    alert("Error parsing CSV: " + err.message);
+                }
+            });
+        }
+
+        function processResults(data, filename) {
+            dataLayer.clearLayers();
+            
+            // Find coordinate columns automatically
+            const headers = Object.keys(data[0]);
+            const latCol = findColumn(headers, ['anonymous_lat', 'lat', 'latitude', 'y_coord', 'y']);
+            const lngCol = findColumn(headers, ['anonymous_long', 'long', 'longitude', 'x_coord', 'lng', 'x']);
+
+            if (!latCol || !lngCol) {
+                alert(`Error: Could not find Latitude/Longitude columns.\n\nFound headers: ${headers.join(', ')}`);
+                return;
+            }
+
+            dropZone.classList.add('hidden');
+            let count = 0;
+
+            data.forEach(row => {
+                const lat = row[latCol];
+                const lng = row[lngCol];
+
+                if (isValidCoord(lat, lng)) {
+                    count++;
+                    const marker = L.circleMarker([lat, lng], {
+                        radius: 8,
+                        fillColor: "#3b82f6",
+                        color: "#fff",
+                        weight: 2,
+                        opacity: 1,
+                        fillOpacity: 0.8
+                    });
+
+                    // Create popup content from ALL headers
+                    let tableRows = "";
+                    headers.forEach(h => {
+                        let val = row[h];
+                        if (val !== null && val !== undefined) {
+                            // Format numbers to 4 decimal places if they are floats
+                            if (typeof val === 'number' && !Number.isInteger(val)) {
+                                val = val.toFixed(4);
+                            }
+                            tableRows += `<tr><td>${h}</td><td>${val}</td></tr>`;
+                        }
+                    });
+
+                    marker.bindPopup(`
+                        <b>Record Details</b>
+                        <div style="max-height: 250px; overflow-y: auto;">
+                            <table class="data-table">${tableRows}</table>
+                        </div>
+                    `, { maxWidth: 350 });
+                    
+                    dataLayer.addLayer(marker);
+                }
+            });
+
+            if (count > 0) {
+                map.fitBounds(dataLayer.getBounds(), { padding: [50, 50] });
+                showStatus(filename, count);
+            } else {
+                alert("No valid coordinates found in the file.");
+                dropZone.classList.remove('hidden');
+            }
+        }
+
+        // --- Helpers ---
+        function findColumn(headers, possibleNames) {
+            // Priority 1: Exact matches (case insensitive)
+            for (let name of possibleNames) {
+                const found = headers.find(h => h.toLowerCase().trim() === name.toLowerCase());
+                if (found) return found;
+            }
+            // Priority 2: Contains substring
+            for (let name of possibleNames) {
+                const found = headers.find(h => h.toLowerCase().includes(name.toLowerCase()));
+                if (found) return found;
+            }
+            return null;
+        }
+
+        function isValidCoord(lat, lng) {
+            return typeof lat === 'number' && typeof lng === 'number' && 
+                   !isNaN(lat) && !isNaN(lng) &&
+                   lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180;
+        }
+
+        function showStatus(filename, count) {
+            document.getElementById('data-status').style.display = 'block';
+            document.getElementById('status-filename').innerText = filename;
+            document.getElementById('status-count').innerText = count + " points mapped";
+        }
+
+        function resetApp() {
+            dataLayer.clearLayers();
+            document.getElementById('data-status').style.display = 'none';
+            dropZone.classList.remove('hidden');
+            map.setView([0, 0], 2);
+        }
+    </script>
+</body>
+</html>
