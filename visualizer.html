@@ -42,10 +42,12 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 1.5rem;
             z-index: 2000;
         }
-        .nav-menu a { color: #fff; margin: 0 15px; text-decoration: none; font-weight: bold; font-size: 0.9rem; }
-        .nav-menu a:hover { text-decoration: underline; }
+        .nav-menu a { color: #fff; text-decoration: none; font-weight: 600; font-size: 0.9rem; }
+        .nav-menu a:hover { color: var(--primary); }
+        .return-btn { background: #444; padding: 2px 10px; border-radius: 4px; font-size: 0.8rem !important; }
 
         /* Drag & Drop Overlay */
         #drop-zone {
@@ -109,6 +111,7 @@
 <body>
 
     <div class="nav-menu">
+        <a href="index.html" class="return-btn"><i class="fas fa-home"></i> Home</a>
         <a href="rainfall_map.html">Rainfall Map</a>
         <a href="drought_damage_map.html">Drought Damage</a>
         <a href="ghana_floods_map.html">Ghana Flood Map</a>

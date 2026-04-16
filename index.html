@@ -6,10 +6,11 @@
     <title>Ghana Flood Risk Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
     <style>
         :root {
-            --primary: #0f172a;
-            --accent: #2563eb;
+            --primary: #3b82f6;
+            --dark: #0f172a;
             --bg: #f8fafc;
             --card-bg: #ffffff;
             --text-main: #1e293b;
@@ -26,14 +27,14 @@
 
         /* Navigation */
         .nav-menu {
-            background: var(--primary);
-            padding: 1rem;
+            background: #333;
+            padding: 10px;
             position: sticky;
             top: 0;
             z-index: 1000;
             display: flex;
             justify-content: center;
-            gap: 2rem;
+            gap: 1.5rem;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
@@ -41,38 +42,43 @@
             color: #f8fafc;
             text-decoration: none;
             font-weight: 600;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             transition: color 0.2s;
         }
 
         .nav-menu a:hover {
-            color: #60a5fa;
+            color: var(--primary);
+        }
+
+        .return-btn {
+            background: #444;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 0.8rem !important;
         }
 
         /* Hero Section */
         .hero {
-            background: linear-gradient(rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.9)), 
+            background: linear-gradient(rgba(15, 23, 42, 0.85), rgba(15, 23, 42, 0.85)), 
                         url('https://images.unsplash.com/photo-1547038577-da80abbc4f19?auto=format&fit=crop&q=80&w=1600');
             background-size: cover;
             background-position: center;
             color: white;
-            padding: 6rem 2rem;
+            padding: 5rem 2rem;
             text-align: center;
         }
 
         .hero h1 {
-            font-size: 3rem;
-            margin: 0 0 1.5rem;
+            font-size: 2.8rem;
+            margin: 0 0 1rem;
             font-weight: 700;
-            letter-spacing: -0.02em;
         }
 
         .hero p {
-            font-size: 1.25rem;
+            font-size: 1.1rem;
             max-width: 800px;
             margin: 0 auto;
-            opacity: 0.95;
-            font-weight: 400;
+            opacity: 0.9;
         }
 
         /* Main Content */
@@ -83,18 +89,18 @@
         }
 
         .section-title {
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             margin: 4rem 0 1.5rem;
-            padding-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
             border-bottom: 2px solid #e2e8f0;
-            color: var(--primary);
+            color: var(--dark);
             font-weight: 700;
         }
 
         /* Cards Layout */
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 2rem;
         }
 
@@ -102,115 +108,124 @@
             background: var(--card-bg);
             border-radius: 16px;
             padding: 2rem;
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
             display: flex;
             flex-direction: column;
             border: 1px solid #f1f5f9;
         }
 
         .card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            transform: translateY(-5px);
         }
 
         .card i {
-            font-size: 2.5rem;
-            color: var(--accent);
-            margin-bottom: 1.5rem;
+            font-size: 2.2rem;
+            color: var(--primary);
+            margin-bottom: 1rem;
         }
 
         .card h3 {
-            margin: 0 0 1rem;
-            font-size: 1.4rem;
-            color: var(--primary);
+            margin: 0 0 0.75rem;
+            font-size: 1.25rem;
         }
 
         .card p {
             color: var(--text-muted);
-            font-size: 1rem;
+            font-size: 0.95rem;
             flex-grow: 1;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
 
         .btn {
             display: inline-block;
-            background: var(--accent);
+            background: var(--primary);
             color: white;
             text-decoration: none;
-            padding: 0.85rem 1.75rem;
+            padding: 0.75rem 1.5rem;
             border-radius: 8px;
             font-weight: 600;
             text-align: center;
-            transition: background 0.2s;
+            transition: opacity 0.2s;
         }
 
         .btn:hover {
-            background: #1d4ed8;
+            opacity: 0.9;
         }
 
-        /* Dataset List */
-        .dataset-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1.25rem;
-        }
-
-        .dataset-item {
-            background: var(--card-bg);
-            padding: 1.75rem;
+        /* Dataset Item Styling */
+        .dataset-card {
+            background: white;
             border-radius: 12px;
-            border-left: 5px solid var(--accent);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+
+        .dataset-meta {
             display: grid;
-            grid-template-columns: 1.5fr 1fr 100px 150px;
-            align-items: center;
-            gap: 1.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #f1f5f9;
         }
 
-        @media (max-width: 900px) {
-            .dataset-item {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
-
-        @media (max-width: 600px) {
-            .dataset-item {
-                grid-template-columns: 1fr;
-            }
-            .hero h1 { font-size: 2rem; }
-        }
-
-        .meta-label {
-            font-size: 0.75rem;
+        .meta-item b {
+            display: block;
+            font-size: 0.7rem;
             text-transform: uppercase;
             color: var(--text-muted);
-            font-weight: 700;
-            display: block;
-            margin-bottom: 4px;
             letter-spacing: 0.05em;
         }
 
-        .meta-value {
+        .meta-item span {
             font-weight: 600;
-            color: var(--text-main);
+            font-size: 0.9rem;
+        }
+
+        /* Data Preview Table */
+        .preview-container {
+            overflow-x: auto;
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .preview-container h4 {
+            margin: 0 0 8px;
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+        }
+
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.7rem;
+        }
+
+        .preview-table th {
+            text-align: left;
+            background: #eee;
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+        }
+
+        .preview-table td {
+            padding: 4px 8px;
+            border: 1px solid #ddd;
+            white-space: nowrap;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         footer {
             text-align: center;
-            padding: 5rem 2rem;
+            padding: 4rem 2rem;
             color: var(--text-muted);
-            font-size: 0.95rem;
-            background: #f1f5f9;
-            margin-top: 4rem;
-        }
-
-        .rwanda-link {
-            display: inline-block;
-            margin-top: 1rem;
-            color: var(--accent);
-            text-decoration: none;
-            font-weight: 600;
             font-size: 0.9rem;
         }
     </style>
@@ -218,10 +233,10 @@
 <body>
 
     <nav class="nav-menu">
-        <a href="index.html"><i class="fas fa-home"></i> Home</a>
-        <a href="ghana_floods_map.html"><i class="fas fa-map-marked-alt"></i> Risk Dashboard</a>
-        <a href="flood_analysis.html"><i class="fas fa-chart-line"></i> Global Analysis</a>
-        <a href="visualizer.html"><i class="fas fa-file-upload"></i> Data Visualizer</a>
+        <a href="index.html" class="return-btn"><i class="fas fa-home"></i> Home</a>
+        <a href="ghana_floods_map.html">Risk Dashboard</a>
+        <a href="flood_analysis.html">Analysis</a>
+        <a href="visualizer.html">Visualizer</a>
     </nav>
 
     <header class="hero">
@@ -239,86 +254,132 @@
                 <a href="ghana_floods_map.html" class="btn">Launch Dashboard</a>
             </div>
             <div class="card">
-                <i class="fas fa-globe-africa"></i>
+                <i class="fas fa-chart-line"></i>
                 <h3>Historic Trend Analysis</h3>
                 <p>Statistical breakdown of flood severity, displacement patterns, and regional impact trends from 1985 to present.</p>
                 <a href="flood_analysis.html" class="btn">View Trends</a>
             </div>
             <div class="card">
-                <i class="fas fa-database"></i>
-                <h3>Universal Visualizer</h3>
+                <i class="fas fa-file-import"></i>
+                <h3>Custom Visualizer</h3>
                 <p>A custom tool to drag and drop any CSV dataset for instant mapping and metadata exploration directly in your browser.</p>
                 <a href="visualizer.html" class="btn">Open Visualizer</a>
             </div>
         </div>
 
-        <div class="section-title">Project Datasets & Provenance</div>
-        <div class="dataset-list">
-            <div class="dataset-item">
-                <div>
-                    <span class="meta-label">Dataset Name</span>
-                    <span class="meta-value">Ghana Flood Events (Filtered)</span>
+        <div class="section-title">Datasets & Data Previews</div>
+        
+        <div id="datasets-container">
+            <!-- Dataset 1 -->
+            <div class="dataset-card">
+                <div class="dataset-meta">
+                    <div class="meta-item"><b>Dataset Name</b><span>Ghana Flood Events</span></div>
+                    <div class="meta-item"><b>Primary Source</b><span>Dartmouth Flood Observatory</span></div>
+                    <div class="meta-item"><b>Format</b><span>CSV</span></div>
+                    <div class="meta-item"><b>File Path</b><span>data/ghana_flood_events.csv</span></div>
                 </div>
-                <div>
-                    <span class="meta-label">Primary Source</span>
-                    <span class="meta-value">Dartmouth Flood Observatory</span>
-                </div>
-                <div>
-                    <span class="meta-label">Format</span>
-                    <span class="meta-value">CSV / GeoJSON</span>
-                </div>
-                <div>
-                    <span class="meta-label">Retrieved</span>
-                    <span class="meta-value">April 2026</span>
+                <div class="preview-container">
+                    <h4>Data Preview (First 5 Rows)</h4>
+                    <div id="preview-ghana-floods">Loading preview...</div>
                 </div>
             </div>
-            <div class="dataset-item">
-                <div>
-                    <span class="meta-label">Dataset Name</span>
-                    <span class="meta-value">Ghana Health Facilities</span>
+
+            <!-- Dataset 2 -->
+            <div class="dataset-card">
+                <div class="dataset-meta">
+                    <div class="meta-item"><b>Dataset Name</b><span>Ghana Health Facilities</span></div>
+                    <div class="meta-item"><b>Primary Source</b><span>OpenStreetMap (Overpass)</span></div>
+                    <div class="meta-item"><b>Format</b><span>CSV</span></div>
+                    <div class="meta-item"><b>File Path</b><span>data/ghana_health_sites.csv</span></div>
                 </div>
-                <div>
-                    <span class="meta-label">Primary Source</span>
-                    <span class="meta-value">OpenStreetMap (Overpass API)</span>
-                </div>
-                <div>
-                    <span class="meta-label">Format</span>
-                    <span class="meta-value">CSV</span>
-                </div>
-                <div>
-                    <span class="meta-label">Retrieved</span>
-                    <span class="meta-value">April 2026</span>
+                <div class="preview-container">
+                    <h4>Data Preview (First 5 Rows)</h4>
+                    <div id="preview-ghana-health">Loading preview...</div>
                 </div>
             </div>
-            <div class="dataset-item">
-                <div>
-                    <span class="meta-label">Dataset Name</span>
-                    <span class="meta-value">At-Risk Site Analysis</span>
+
+            <!-- Dataset 3 -->
+            <div class="dataset-card">
+                <div class="dataset-meta">
+                    <div class="meta-item"><b>Dataset Name</b><span>Rwanda Drought Data</span></div>
+                    <div class="meta-item"><b>Primary Source</b><span>NISR / FAO</span></div>
+                    <div class="meta-item"><b>Format</b><span>CSV</span></div>
+                    <div class="meta-item"><b>File Path</b><span>data/eastern_province_drought.csv</span></div>
                 </div>
-                <div>
-                    <span class="meta-label">Primary Source</span>
-                    <span class="meta-value">Derived Spatial Computation</span>
+                <div class="preview-container">
+                    <h4>Data Preview (First 5 Rows)</h4>
+                    <div id="preview-rwanda-drought">Loading preview...</div>
                 </div>
-                <div>
-                    <span class="meta-label">Format</span>
-                    <span class="meta-value">CSV</span>
+            </div>
+
+            <!-- Dataset 4 -->
+            <div class="dataset-card">
+                <div class="dataset-meta">
+                    <div class="meta-item"><b>Dataset Name</b><span>Global Flood Archive (Cleaned)</span></div>
+                    <div class="meta-item"><b>Primary Source</b><span>Derived Historical Data</span></div>
+                    <div class="meta-item"><b>Format</b><span>CSV</span></div>
+                    <div class="meta-item"><b>File Path</b><span>data/flood_analysis_clean.csv</span></div>
                 </div>
-                <div>
-                    <span class="meta-label">Analysis Date</span>
-                    <span class="meta-value">April 2026</span>
+                <div class="preview-container">
+                    <h4>Data Preview (First 5 Rows)</h4>
+                    <div id="preview-global-floods">Loading preview...</div>
                 </div>
             </div>
         </div>
 
         <div style="text-align: center; margin-top: 4rem;">
             <p style="color: var(--text-muted);">Also interested in Rwanda drought patterns?</p>
-            <a href="rainfall_map.html" class="rwanda-link">View Rwanda Rainfall & Population Map →</a>
+            <a href="rainfall_map.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">View Rwanda Rainfall & Population Map →</a>
         </div>
     </main>
 
+    <script>
+        function loadPreview(filePath, elementId) {
+            Papa.parse(filePath, {
+                download: true,
+                header: true,
+                preview: 5,
+                complete: function(results) {
+                    const data = results.data;
+                    const headers = results.meta.fields;
+                    if (!headers || headers.length === 0) {
+                        document.getElementById(elementId).innerHTML = 'No data available.';
+                        return;
+                    }
+                    let html = '<table class="preview-table"><thead><tr>';
+                    
+                    // Add headers (limit to first 8 columns for space)
+                    headers.slice(0, 8).forEach(h => {
+                        html += `<th>${h}</th>`;
+                    });
+                    html += '</tr></thead><tbody>';
+
+                    // Add rows
+                    data.forEach(row => {
+                        html += '<tr>';
+                        headers.slice(0, 8).forEach(h => {
+                            html += `<td>${row[h] || ''}</td>`;
+                        });
+                        html += '</tr>';
+                    });
+                    html += '</tbody></table>';
+                    document.getElementById(elementId).innerHTML = html;
+                },
+                error: function(err) {
+                    document.getElementById(elementId).innerHTML = '<span style="color:red">Error loading preview.</span>';
+                }
+            });
+        }
+
+        // Load previews on startup
+        loadPreview('data/ghana_flood_events.csv', 'preview-ghana-floods');
+        loadPreview('data/ghana_health_sites.csv', 'preview-ghana-health');
+        loadPreview('data/eastern_province_drought.csv', 'preview-rwanda-drought');
+        loadPreview('data/flood_analysis_clean.csv', 'preview-global-floods');
+    </script>
+
     <footer>
-        <p>&copy; 2026 Ghana Flood Risk Portal | Supporting Humanitarian Resilience through Data Science.</p>
-        <p style="font-size: 0.8rem; margin-top: 0.5rem; opacity: 0.7;">Powered by Leaflet.js, Chart.js, and PapaParse.</p>
+        <p>&copy; 2026 Ghana Flood Risk Portal | Built with Leaflet.js, Chart.js, and PapaParse.</p>
     </footer>
 
 </body>
