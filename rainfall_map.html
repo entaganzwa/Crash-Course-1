@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Rwanda Eastern Province Drought Map</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        #map { height: 600px; width: 100%; }
+        .nav-menu { background: #333; padding: 10px; color: white; margin-bottom: 10px; border-radius: 5px; }
+        .nav-menu a { color: #fff; margin-right: 20px; text-decoration: none; font-weight: bold; }
+        .nav-menu a:hover { text-decoration: underline; }
+        .info { padding: 6px 8px; font: 14px/16px Arial, Helvetica, sans-serif; background: white; background: rgba(255,255,255,0.8); box-shadow: 0 0 15px rgba(0,0,0,0.2); border-radius: 5px; }
+        .info h4 { margin: 0 0 5px; color: #777; }
+        .legend { line-height: 18px; color: #555; }
+        .legend i { width: 18px; height: 18px; float: left; margin-right: 8px; opacity: 0.7; }
+        .chart-container { width: 300px; height: 200px; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="nav-menu">
+    <a href="rainfall_map.html">Rainfall Map</a>
+    <a href="drought_damage_map.html">Drought Damage Map</a>
+    <a href="ghana_floods_map.html">Ghana Flood Map</a>
+    <a href="flood_analysis.html">Flood Analysis Charts</a>
+    <a href="visualizer.html">Visualizer</a>
+</div>
+
+<div id="map"></div>
+
+<script>
+    var map = L.map('map').setView([-1.9, 30.5], 9);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '© OpenStreetMap'
+    }).addTo(map);
+
+    // Coordinates for District Centers in Eastern Province
+    var districtCoords = {
+        'Nyagatare': [-1.30, 30.33],
+        'Gatsibo': [-1.60, 30.45],
+        'Kayonza': [-1.85, 30.65],
+        'Rwamagana': [-1.95, 30.43],
+        'Ngoma': [-2.15, 30.48],
+        'Kirehe': [-2.27, 30.65],
+        'Bugesera': [-2.15, 30.10]
+    };
+
+    // Population data from 2022 Census
+    var districtPopulations = {
+        'Nyagatare': 653861,
+        'Gatsibo': 551164,
+        'Bugesera': 551103,
+        'Rwamagana': 484953,
+        'Kirehe': 460860,
+        'Kayonza': 457156,
+        'Ngoma': 404048
+    };
+
+    function getColor(d) {
+        return d > 100 ? '#006837' : // Very Wet
+               d > 80  ? '#78c679' : // Normal
+               d > 60  ? '#fed976' : // Mild Drought
+               d > 40  ? '#fd8d3c' : // Moderate Drought
+               d > 20  ? '#f03b20' : // Severe Drought
+                         '#bd0026';   // Extreme Drought
+    }
+
+    Papa.parse("data/eastern_province_drought.csv", {
+        download: true,
+        header: true,
+        complete: function(results) {
+            var data = results.data;
+            
+            // Group data by district
+            var districtData = {};
+            data.forEach(function(row) {
+                if (row.district_name && row.rfq) {
+                    if (!districtData[row.district_name]) {
+                        districtData[row.district_name] = [];
+                    }
+                    districtData[row.district_name].push(row);
+                }
+            });
+
+            Object.keys(districtData).forEach(function(name) {
+                var history = districtData[name];
+                var latest = history[history.length - 1];
+                var coords = districtCoords[name];
+                
+                if (coords) {
+                    var rfq = parseFloat(latest.rfq);
+                    var circle = L.circleMarker(coords, {
+                        color: '#000',
+                        weight: 1,
+                        opacity: 1,
+                        fillColor: getColor(rfq),
+                        fillOpacity: 0.8,
+                        radius: 15
+                    }).addTo(map);
+
+                    var pop = districtPopulations[name] ? districtPopulations[name].toLocaleString() : "Unknown";
+
+                    // Create a unique ID for the chart canvas
+                    var chartId = 'chart-' + name.replace(/\s+/g, '-');
+                    
+                    var popupContent = "<b>District:</b> " + name + 
+                                   "<br><b>Population (2022):</b> " + pop +
+                                   "<br><b>Latest Date:</b> " + latest.date + 
+                                   "<br><b>Rainfall % of Normal:</b> " + rfq.toFixed(1) + "%" +
+                                   "<br><b>Severity:</b> " + (rfq < 20 ? "Extreme Drought" : rfq < 40 ? "Severe Drought" : rfq < 60 ? "Moderate Drought" : rfq < 80 ? "Mild Drought" : rfq < 100 ? "Normal" : "Very Wet") +
+                                   "<div class='chart-container'><canvas id='" + chartId + "'></canvas></div>";
+
+                    circle.bindPopup(popupContent, { maxWidth: 350 });
+
+                    circle.on('popupopen', function() {
+                        var ctx = document.getElementById(chartId).getContext('2d');
+                        
+                        // Last 12 points for the chart
+                        var chartHistory = history.slice(-12);
+                        var labels = chartHistory.map(h => h.date);
+                        var values = chartHistory.map(h => parseFloat(h.rfq));
+
+                        new Chart(ctx, {
+                            type: 'line',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Rainfall % of Normal',
+                                    data: values,
+                                    borderColor: '#3e95cd',
+                                    fill: false,
+                                    tension: 0.1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        max: Math.max(120, Math.max(...values) + 10)
+                                    }
+                                }
+                            }
+                        });
+                    });
+                }
+            });
+        }
+    });
+
+    // Legend
+    var legend = L.control({position: 'bottomright'});
+    legend.onAdd = function (map) {
+        var div = L.DomUtil.create('div', 'info legend'),
+            grades = [0, 20, 40, 60, 80, 100],
+            labels = ["Extreme", "Severe", "Moderate", "Mild", "Normal", "Wet"];
+
+        div.innerHTML += '<h4>Rainfall % of Normal</h4>';
+        for (var i = 0; i < grades.length; i++) {
+            div.innerHTML +=
+                '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
+                grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '%<br>' : '+%');
+        }
+        return div;
+    };
+    legend.addTo(map);
+
+</script>
+
+</body>
+</html>
